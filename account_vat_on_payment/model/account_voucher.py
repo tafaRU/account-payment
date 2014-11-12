@@ -20,17 +20,15 @@
 #
 ##############################################################################
 
-from openerp.osv import orm, fields
-from tools.translate import _
+from openerp import models, fields, api, _
+from openerp.exceptions import Warning
 
 
-class account_voucher(orm.Model):
+class AccountVoucher(models.Model):
     _inherit = "account.voucher"
 
-    _columns = {
-        'shadow_move_id': fields.many2one(
-            'account.move', 'Shadow Entry', readonly=True),
-    }
+    shadow_move_id = fields.Many2one(
+        'account.move', string='Shadow Entry', readonly=True),
 
     def is_vat_on_payment(self, voucher):
         vat_on_p = 0
@@ -45,7 +43,7 @@ class account_voucher(orm.Model):
                     ):
                         vat_on_p += 1
             if vat_on_p and vat_on_p != valid_lines:
-                raise orm.except_orm(
+                raise Warning(
                     _('Error'),
                     _("Can't handle VAT on payment if not every invoice "
                       "is on a VAT on payment treatment"))
@@ -119,7 +117,7 @@ class account_voucher(orm.Model):
         foreign_curr_id, context=None
     ):
         if not inv_move_line.real_account_id:
-            raise orm.except_orm(
+            raise Warning(
                 _('Error'),
                 _("We are on a VAT on payment treatment "
                   "but move line %s does not have a related "
@@ -140,7 +138,7 @@ class account_voucher(orm.Model):
             vals['currency_id'] = foreign_curr_id
         if inv_move_line.tax_code_id:
             if not inv_move_line.real_tax_code_id:
-                raise orm.except_orm(
+                raise Warning(
                     _('Error'),
                     _("We are on a VAT on payment "
                       "treatment but move line %s does not "
@@ -224,7 +222,7 @@ class account_voucher(orm.Model):
         move_pool = self.pool.get('account.move')
         inv_pool = self.pool.get('account.invoice')
         if not voucher.journal_id.vat_on_payment_related_journal_id:
-            raise orm.except_orm(
+            raise Warning(
                 _('Error'),
                 _("We are on a VAT on payment treatment "
                   "but journal %s does not have a related shadow "
@@ -232,7 +230,7 @@ class account_voucher(orm.Model):
                 % voucher.journal_id.name)
         lines_to_create = []
         amounts_by_invoice = super(
-            account_voucher, self
+            AccountVoucher, self
         ).allocated_amounts_grouped_by_invoice(
             cr, uid, voucher, context)
         for inv_id in amounts_by_invoice:
@@ -285,9 +283,9 @@ class account_voucher(orm.Model):
 
         voucher.write({'shadow_move_id': shadow_move_id})
 
-        super(account_voucher, self).balance_move(
+        super(AccountVoucher, self).balance_move(
             cr, uid, shadow_move_id, context)
-        super(account_voucher, self).balance_move(
+        super(AccountVoucher, self).balance_move(
             cr, uid, voucher.move_id.id, context)
         return True
 
@@ -304,7 +302,7 @@ class account_voucher(orm.Model):
             if entry_posted:
                 journal_pool.write(
                     cr, uid, voucher.journal_id.id, {'entry_posted': False})
-            res = super(account_voucher, self).action_move_line_create(
+            res = super(AccountVoucher, self).action_move_line_create(
                 cr, uid, [voucher.id], context)
             # because 'move_id' has been updated by 'action_move_line_create'
             voucher.refresh()
@@ -318,7 +316,7 @@ class account_voucher(orm.Model):
         return res
 
     def cancel_voucher(self, cr, uid, ids, context=None):
-        res = super(account_voucher, self).cancel_voucher(
+        res = super(AccountVoucher, self).cancel_voucher(
             cr, uid, ids, context)
         reconcile_pool = self.pool.get('account.move.reconcile')
         move_pool = self.pool.get('account.move')

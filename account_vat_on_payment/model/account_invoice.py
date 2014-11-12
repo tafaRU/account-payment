@@ -20,15 +20,14 @@
 #
 ##############################################################################
 
-from openerp.osv import orm, fields
-from tools.translate import _
+from openerp import models, fields, api, _
+from openerp.exceptions import Warning
 
 
-class account_invoice(orm.Model):
+class AccountInvoice(models.Model):
 
-    def _get_vat_on_payment(self, cr, uid, context=None):
-        return self.pool.get('res.users').browse(
-            cr, uid, uid, context).company_id.vat_on_payment
+    def _get_vat_on_payment(self):
+        return self.env.user.company_id.vat_on_payment
 
     def _set_vat_on_payment_account(self, cr, uid, line_tuple, context=None):
         acc_pool = self.pool.get('account.account')
@@ -36,7 +35,7 @@ class account_invoice(orm.Model):
             cr, uid, line_tuple[2]['account_id'], context=context)
         if account.type not in ['receivable', 'payable']:
             if not account.vat_on_payment_related_account_id:
-                raise orm.except_orm(
+                raise Warning(
                     _('Error'),
                     _("The invoice is 'VAT on payment' but "
                       "account %s does not have a related shadow "
@@ -53,7 +52,7 @@ class account_invoice(orm.Model):
         tax_code = tax_code_pool.browse(
             cr, uid, line_tuple[2]['tax_code_id'], context=context)
         if not tax_code.vat_on_payment_related_tax_code_id:
-            raise orm.except_orm(
+            raise Warning(
                 _('Error'),
                 _("The invoice is 'VAT on payment' but "
                   "tax code %s does not have a related shadow "
@@ -65,12 +64,13 @@ class account_invoice(orm.Model):
             tax_code.vat_on_payment_related_tax_code_id.id)
         return line_tuple
 
-    def finalize_invoice_move_lines(self, cr, uid, invoice_browse, move_lines):
+    @api.multi
+    def finalize_invoice_move_lines(self, invoice_browse, move_lines):
         """
         Use shadow accounts for journal entry to be generated, according to
         account and tax code related records
         """
-        move_lines = super(account_invoice, self).finalize_invoice_move_lines(
+        move_lines = super(AccountInvoice, self).finalize_invoice_move_lines(
             cr, uid, invoice_browse, move_lines)
         context = self.pool['res.users'].context_get(cr, uid)
         new_move_lines = []
@@ -88,7 +88,7 @@ class account_invoice(orm.Model):
     def onchange_partner_id(
             self, cr, uid, ids, type, partner_id, date_invoice=False,
             payment_term=False, partner_bank_id=False, company_id=False):
-        res = super(account_invoice, self).onchange_partner_id(
+        res = super(AccountInvoice, self).onchange_partner_id(
             cr, uid, ids, type, partner_id, date_invoice, payment_term,
             partner_bank_id, company_id)
         # default value for VAT on Payment is changed every time the
@@ -104,9 +104,6 @@ class account_invoice(orm.Model):
         return res
 
     _inherit = "account.invoice"
-    _columns = {
-        'vat_on_payment': fields.boolean('Vat on payment'),
-    }
-    _defaults = {
-        'vat_on_payment': _get_vat_on_payment,
-    }
+
+    vat_on_payment = fields.Boolean(
+        string='Vat on payment', default=_get_vat_on_payment),
