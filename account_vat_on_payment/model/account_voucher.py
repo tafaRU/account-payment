@@ -49,9 +49,7 @@ class AccountVoucher(models.Model):
                       "is on a VAT on payment treatment"))
         return vat_on_p
 
-    def _compute_allocated_amount(
-        self, cr, uid, voucher, allocated=0, write_off=0, context=None
-    ):
+    def _compute_allocated_amount(self, voucher, allocated=0, write_off=0):
         # compute the VAT or base line proportionally to
         # the paid amount
         allocated_amount = allocated + write_off
@@ -66,17 +64,16 @@ class AccountVoucher(models.Model):
         return allocated_amount
 
     def _compute_new_line_amount(
-        self, cr, uid, voucher, inv_move_line, amounts_by_invoice, invoice,
-        context=None
+            self, voucher, inv_move_line, amounts_by_invoice, invoice
     ):
         currency_obj = self.pool.get('res.currency')
         allocated_amount = self._compute_allocated_amount(
-            cr, uid, voucher,
+            voucher,
             allocated=amounts_by_invoice[invoice.id]['allocated'],
             write_off=amounts_by_invoice[invoice.id]['write-off'],
-            context=context)
+        )
         new_line_amount = currency_obj.round(
-            cr, uid, voucher.company_id.currency_id,
+            voucher.company_id.currency_id,
             (allocated_amount / amounts_by_invoice[invoice.id]['total'])
             *
             (inv_move_line.credit or inv_move_line.debit)
@@ -84,25 +81,24 @@ class AccountVoucher(models.Model):
         return new_line_amount
 
     def _compute_new_line_currency_amount(
-        self, cr, uid, voucher, inv_move_line, amounts_by_invoice, invoice,
-        context=None
+            self, voucher, inv_move_line, amounts_by_invoice, invoice
     ):
-        currency_obj = self.pool.get('res.currency')
+        currency = self.env['res.currency']
         new_line_amount_curr = False
         if (
             amounts_by_invoice[invoice.id].get('allocated_currency')
             and amounts_by_invoice[invoice.id].get('foreign_currency_id')
         ):
-            for_curr = currency_obj.browse(
-                cr, uid, amounts_by_invoice[invoice.id]['foreign_currency_id'],
-                context=context)
+            for_curr = currency.browse(
+                amounts_by_invoice[invoice.id]['foreign_currency_id']
+            )
             allocated_amount = self._compute_allocated_amount(
-                cr, uid, voucher,
+                voucher,
                 allocated=amounts_by_invoice[invoice.id]['allocated_currency'],
                 write_off=amounts_by_invoice[invoice.id]['currency-write-off'],
-                context=context)
-            new_line_amount_curr = currency_obj.round(
-                cr, uid, for_curr,
+            )
+            new_line_amount_curr = currency.round(
+                for_curr,
                 (
                     allocated_amount /
                     amounts_by_invoice[invoice.id]['total_currency']
@@ -113,8 +109,8 @@ class AccountVoucher(models.Model):
         return new_line_amount_curr
 
     def _prepare_real_move_line(
-        self, cr, uid, inv_move_line, new_line_amount, new_line_amount_curr,
-        foreign_curr_id, context=None
+            self, inv_move_line, new_line_amount,
+            new_line_amount_curr, foreign_curr_id
     ):
         if not inv_move_line.real_account_id:
             raise Warning(
@@ -152,10 +148,7 @@ class AccountVoucher(models.Model):
                 vals['tax_amount'] = new_line_amount
         return vals
 
-    def _prepare_shadow_move_line(
-        self, cr, uid, inv_move_line, new_line_amount,
-        context=None
-    ):
+    def _prepare_shadow_move_line(self, inv_move_line, new_line_amount):
         vals = {
             'name': inv_move_line.name,
             'account_id': inv_move_line.account_id.id,
@@ -180,7 +173,7 @@ class AccountVoucher(models.Model):
                 vals['tax_amount'] = -new_line_amount
         return vals
 
-    def _prepare_shadow_move(self, cr, uid, voucher, context=None):
+    def _prepare_shadow_move(self, voucher):
         return {
             'journal_id': (
                 voucher.journal_id.vat_on_payment_related_journal_id.id
@@ -189,9 +182,7 @@ class AccountVoucher(models.Model):
             'date': voucher.move_id.date,
         }
 
-    def _move_payment_lines_to_shadow_entry(
-        self, cr, uid, voucher, shadow_move_id, context=None
-    ):
+    def _move_payment_lines_to_shadow_entry(self, voucher, shadow_move_id):
         for line in voucher.move_ids:
             if line.account_id.type != 'liquidity':
                 # If the line is related to write-off and user doesn't
@@ -217,10 +208,9 @@ class AccountVoucher(models.Model):
                     })
         return True
 
-    def _create_vat_on_payment_move(self, cr, uid, voucher, context=None):
-        move_line_pool = self.pool.get('account.move.line')
-        move_pool = self.pool.get('account.move')
-        inv_pool = self.pool.get('account.invoice')
+    def _create_vat_on_payment_move(self, voucher):
+        move_line = self.env['account.move.line']
+        move = self.env['account.move']
         if not voucher.journal_id.vat_on_payment_related_journal_id:
             raise Warning(
                 _('Error'),
@@ -231,46 +221,45 @@ class AccountVoucher(models.Model):
         lines_to_create = []
         amounts_by_invoice = super(
             AccountVoucher, self
-        ).allocated_amounts_grouped_by_invoice(
-            cr, uid, voucher, context)
+        ).allocated_amounts_grouped_by_invoice(voucher)
         for inv_id in amounts_by_invoice:
-            invoice = inv_pool.browse(cr, uid, inv_id, context)
+            invoice = self.env['account.invoice'].browse(inv_id)
             for inv_move_line in invoice.move_id.line_id:
                 if (
                     inv_move_line.account_id.type != 'receivable'
                     and inv_move_line.account_id.type != 'payable'
                 ):
                     new_line_amount = self._compute_new_line_amount(
-                        cr, uid, voucher, inv_move_line,
-                        amounts_by_invoice, invoice, context=context)
+                        voucher, inv_move_line,
+                        amounts_by_invoice, invoice
+                    )
                     new_line_amount_curr = (
                         self._compute_new_line_currency_amount(
-                            cr, uid, voucher, inv_move_line,
+                            voucher, inv_move_line,
                             amounts_by_invoice, invoice,
-                            context=context)
+                        )
                     )
                     foreign_currency_id = amounts_by_invoice[
                         invoice.id]['foreign_currency_id']
                     real_vals = self._prepare_real_move_line(
-                        cr, uid, inv_move_line, new_line_amount,
+                        inv_move_line, new_line_amount,
                         new_line_amount_curr, foreign_currency_id,
-                        context=context)
+                    )
                     lines_to_create.append(real_vals)
 
                     shadow_vals = self._prepare_shadow_move_line(
-                        cr, uid, inv_move_line, new_line_amount,
-                        context=context)
+                        inv_move_line, new_line_amount,
+                    )
                     lines_to_create.append(shadow_vals)
 
-        context['journal_id'] = (
+        journal_id = (
             voucher.journal_id.vat_on_payment_related_journal_id.id)
-        context['period_id'] = voucher.move_id.period_id.id
-        shadow_move_id = move_pool.create(
-            cr, uid, self._prepare_shadow_move(
-                cr, uid, voucher, context=context), context)
+        period_id = voucher.move_id.period_id.id
+        shadow_move_id = move.with_context(
+            journal_id=journal_id, period_id=period_id).create(
+                self._prepare_shadow_move(voucher))
 
-        self._move_payment_lines_to_shadow_entry(
-            cr, uid, voucher, shadow_move_id, context=context)
+        self._move_payment_lines_to_shadow_entry(voucher, shadow_move_id)
 
         for line_to_create in lines_to_create:
             if line_to_create['type'] == 'real':
@@ -279,48 +268,44 @@ class AccountVoucher(models.Model):
                 line_to_create['move_id'] = shadow_move_id
             del line_to_create['type']
 
-            move_line_pool.create(cr, uid, line_to_create, context)
+            move_line.create(line_to_create)
 
         voucher.write({'shadow_move_id': shadow_move_id})
 
-        super(AccountVoucher, self).balance_move(
-            cr, uid, shadow_move_id, context)
-        super(AccountVoucher, self).balance_move(
-            cr, uid, voucher.move_id.id, context)
+        super(AccountVoucher, self).balance_move(shadow_move_id)
+        super(AccountVoucher, self).balance_move(voucher.move_id.id)
         return True
 
-    def action_move_line_create(self, cr, uid, ids, context=None):
-        if context is None:
-            context = {}
-        journal_pool = self.pool.get('account.journal')
+    @api.multi
+    def action_move_line_create(self):
+        journal = self.env['account.journal']
         res = False
-        for voucher in self.browse(cr, uid, ids, context):
+        for voucher in self:
             entry_posted = voucher.journal_id.entry_posted
             # disable the 'skip draft state' option because "mixed" entry
             # (shadow + real) won't pass validation. Anyway every entry will be
             # posted later (if 'entry_posted' is enabled)
             if entry_posted:
-                journal_pool.write(
-                    cr, uid, voucher.journal_id.id, {'entry_posted': False})
+                journal.write(
+                    voucher.journal_id.id, {'entry_posted': False})
             res = super(AccountVoucher, self).action_move_line_create(
-                cr, uid, [voucher.id], context)
+                [voucher.id])
             # because 'move_id' has been updated by 'action_move_line_create'
             voucher.refresh()
             if entry_posted:
-                journal_pool.write(
-                    cr, uid, voucher.journal_id.id, {'entry_posted': True})
+                journal.write(
+                    voucher.journal_id.id, {'entry_posted': True})
             if self.is_vat_on_payment(voucher):
-                self._create_vat_on_payment_move(
-                    cr, uid, voucher, context=context)
+                self._create_vat_on_payment_move(voucher)
 
         return res
 
-    def cancel_voucher(self, cr, uid, ids, context=None):
-        res = super(AccountVoucher, self).cancel_voucher(
-            cr, uid, ids, context)
-        reconcile_pool = self.pool.get('account.move.reconcile')
-        move_pool = self.pool.get('account.move')
-        for voucher in self.browse(cr, uid, ids, context=context):
+    @api.multi
+    def cancel_voucher(self):
+        res = super(AccountVoucher, self).cancel_voucher()
+        reconcile = self.env['account.move.reconcile']
+        move = self.env['account.move']
+        for voucher in self:
             recs = []
             if voucher.shadow_move_id:
                 for line in voucher.shadow_move_id.line_id:
@@ -329,10 +314,10 @@ class AccountVoucher(models.Model):
                     if line.reconcile_partial_id:
                         recs += [line.reconcile_partial_id.id]
 
-                reconcile_pool.unlink(cr, uid, recs)
+                reconcile.unlink(recs)
 
                 if voucher.shadow_move_id:
-                    move_pool.button_cancel(
-                        cr, uid, [voucher.shadow_move_id.id])
-                    move_pool.unlink(cr, uid, [voucher.shadow_move_id.id])
+                    move.button_cancel(
+                        [voucher.shadow_move_id.id])
+                    move.unlink([voucher.shadow_move_id.id])
         return res

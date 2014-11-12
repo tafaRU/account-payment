@@ -29,10 +29,9 @@ class AccountInvoice(models.Model):
     def _get_vat_on_payment(self):
         return self.env.user.company_id.vat_on_payment
 
-    def _set_vat_on_payment_account(self, cr, uid, line_tuple, context=None):
-        acc_pool = self.pool.get('account.account')
-        account = acc_pool.browse(
-            cr, uid, line_tuple[2]['account_id'], context=context)
+    def _set_vat_on_payment_account(self, line_tuple):
+        account = self.env['account.account'].browse(
+            line_tuple[2]['account_id'])
         if account.type not in ['receivable', 'payable']:
             if not account.vat_on_payment_related_account_id:
                 raise Warning(
@@ -47,10 +46,9 @@ class AccountInvoice(models.Model):
                 account.vat_on_payment_related_account_id.id)
         return line_tuple
 
-    def _set_vat_on_payment_tax_code(self, cr, uid, line_tuple, context=None):
-        tax_code_pool = self.pool.get('account.tax.code')
-        tax_code = tax_code_pool.browse(
-            cr, uid, line_tuple[2]['tax_code_id'], context=context)
+    def _set_vat_on_payment_tax_code(self, line_tuple):
+        tax_code = self.env['account.tax.code'].browse(
+            line_tuple[2]['tax_code_id'])
         if not tax_code.vat_on_payment_related_tax_code_id:
             raise Warning(
                 _('Error'),
@@ -65,38 +63,37 @@ class AccountInvoice(models.Model):
         return line_tuple
 
     @api.multi
-    def finalize_invoice_move_lines(self, invoice_browse, move_lines):
+    def finalize_invoice_move_lines(self, move_lines):
         """
         Use shadow accounts for journal entry to be generated, according to
         account and tax code related records
         """
-        move_lines = super(AccountInvoice, self).finalize_invoice_move_lines(
-            cr, uid, invoice_browse, move_lines)
-        context = self.pool['res.users'].context_get(cr, uid)
+        invoices = self.with_context(self.env['res.users'].context_get())
+        move_lines = super(invoices, self).finalize_invoice_move_lines(
+            move_lines)
         new_move_lines = []
         for line_tuple in move_lines:
-            if invoice_browse.vat_on_payment:
+            if self.vat_on_payment:
                 if line_tuple[2].get('account_id', False):
-                    line_tuple = self._set_vat_on_payment_account(
-                        cr, uid, line_tuple, context=context)
+                    line_tuple = self._set_vat_on_payment_account(line_tuple)
                 if line_tuple[2].get('tax_code_id', False):
-                    line_tuple = self._set_vat_on_payment_tax_code(
-                        cr, uid, line_tuple, context=context)
+                    line_tuple = self._set_vat_on_payment_tax_code(line_tuple)
             new_move_lines.append(line_tuple)
         return new_move_lines
 
+    @api.multi
     def onchange_partner_id(
-            self, cr, uid, ids, type, partner_id, date_invoice=False,
-            payment_term=False, partner_bank_id=False, company_id=False):
+            self, type, partner_id, date_invoice=False,
+            payment_term=False, partner_bank_id=False, company_id=False
+    ):
         res = super(AccountInvoice, self).onchange_partner_id(
-            cr, uid, ids, type, partner_id, date_invoice, payment_term,
-            partner_bank_id, company_id)
+            type, partner_id, date_invoice, payment_term, partner_bank_id,
+            company_id)
         # default value for VAT on Payment is changed every time the
         # customer/supplier is changed
-        partner_obj = self.pool.get("res.partner")
-        context = self.pool['res.users'].context_get(cr, uid)
         if partner_id:
-            p = partner_obj.browse(cr, uid, partner_id, context=context)
+            p = self.env['res.partner'].browse(partner_id)
+            p.with_context(self.env['res.users'].context_get())
             if p.property_account_position:
                 res['value'][
                     'vat_on_payment'
