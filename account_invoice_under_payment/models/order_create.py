@@ -24,7 +24,7 @@ from openerp.osv import osv
 from openerp.tools.translate import _
 
 
-class payment_order_create(osv.osv_memory):
+class PaymentOrdercreate(osv.osv_memory):
 
     _inherit = 'payment.order.create'
 
@@ -35,8 +35,7 @@ class payment_order_create(osv.osv_memory):
             context = {}
         data = self.browse(cr, uid, ids, context=context)[0]
         search_due_date = data.duedate
-        domain = [
-                  ('under_payment', '=', False),
+        domain = [('under_payment', '=', False),
                   ('reconcile_id', '=', False),
                   ('account_id.type', '=', 'payable'),
                   ('credit', '>', 0),
@@ -46,8 +45,7 @@ class payment_order_create(osv.osv_memory):
              ('date_maturity', '=', False)]
         line_ids = line_obj.search(cr, uid, domain, context=context)
         context = dict(context, line_ids=line_ids)
-        dom = [
-               ('model', '=', 'ir.ui.view'),
+        dom = [('model', '=', 'ir.ui.view'),
                ('name', '=', 'view_create_payment_order_lines')]
         model_data_ids = mod_obj.search(cr, uid, dom, context=context)
         resource_id = mod_obj.read(cr, uid, model_data_ids, fields=[
@@ -61,6 +59,3 @@ class payment_order_create(osv.osv_memory):
                 'type': 'ir.actions.act_window',
                 'target': 'new',
                 }
-
-
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

@@ -23,7 +23,7 @@
 from openerp import models, fields, api
 
 
-class account_invoice(models.Model):
+class AccountInvoice(models.Model):
     _inherit = "account.invoice"
 
     @api.multi

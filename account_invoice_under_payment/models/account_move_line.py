@@ -23,7 +23,7 @@
 from openerp import models, fields, api
 
 
-class account_move_line(models.Model):
+class AccountMoveline(models.Model):
     _inherit = "account.move.line"
 
     @api.multi
