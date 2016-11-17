@@ -25,6 +25,7 @@
     "summary": "Payment Order Under Payment",
     "version": "8.0.1.0.0",
     "category": "Accounting",
+    "description": "Payment Order Under Payment",
     'website': 'http://www.serpentcs.com',
     "author": """Serpent Consulting Services Pvt. Ltd.,
                 Agile Business Group,
