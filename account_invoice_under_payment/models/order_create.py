@@ -20,10 +20,7 @@
 #
 # ---------------------------------------------------------------------------
 
-import time
-from lxml import etree
-
-from openerp.osv import fields, osv
+from openerp.osv import osv
 from openerp.tools.translate import _
 
 
@@ -38,15 +35,19 @@ class payment_order_create(osv.osv_memory):
             context = {}
         data = self.browse(cr, uid, ids, context=context)[0]
         search_due_date = data.duedate
-        domain = [('under_payment', '=', False), ('reconcile_id', '=', False), ('account_id.type',
-                                                                                '=', 'payable'), ('credit', '>', 0), ('account_id.reconcile', '=', True)]
+        domain = [('under_payment', '=', False),
+                ('reconcile_id', '=', False),
+                ('account_id.type', '=', 'payable'),
+                ('credit', '>', 0),
+                ('account_id.reconcile', '=', True)]
         domain = domain + \
             ['|', ('date_maturity', '<=', search_due_date),
              ('date_maturity', '=', False)]
         line_ids = line_obj.search(cr, uid, domain, context=context)
         context = dict(context, line_ids=line_ids)
-        model_data_ids = mod_obj.search(cr, uid, [('model', '=', 'ir.ui.view'), (
-            'name', '=', 'view_create_payment_order_lines')], context=context)
+        dom = [('model', '=', 'ir.ui.view'),
+            ('name', '=', 'view_create_payment_order_lines')]
+        model_data_ids = mod_obj.search(cr, uid, dom, context=context)
         resource_id = mod_obj.read(cr, uid, model_data_ids, fields=[
                                    'res_id'], context=context)[0]['res_id']
         return {'name': _('Entry Lines'),
