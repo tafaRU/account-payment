@@ -27,7 +27,7 @@ class AccountInvoice(models.Model):
     _inherit = "account.invoice"
 
     @api.multi
-    @api.depends('payment_ids.under_payment')
+    @api.depends('payment_ids')
     def _check_payment(self):
         for record in self:
             for payment_record in record.payment_ids:
