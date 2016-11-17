@@ -20,7 +20,7 @@
 #
 # ---------------------------------------------------------------------------
 
-import payment
-import account_move_line
-import account_invoice
-import order_create
+from . import payment
+from . import account_move_line
+from . import account_invoice
+from . import order_create

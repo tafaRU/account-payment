@@ -30,7 +30,6 @@
                 Agile Business Group,
                 Odoo Community Association (OCA)""",
     "license": "AGPL-3",
-    "installable": True,
     "depends": [
         "account_payment",
     ],
