@@ -29,5 +29,5 @@ class PaymentLine(models.Model):
     failed = fields.Boolean(
         string="Failed",
         default=False,
-        copy=False,
+        copy=False
     )

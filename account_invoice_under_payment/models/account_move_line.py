@@ -27,7 +27,7 @@ class AccountMoveline(models.Model):
     _inherit = "account.move.line"
 
     @api.multi
-    @api.depends('payment_line_ids.failed')
+    @api.depends('payment_line_ids.failed', 'payment_line_ids.move_line_id')
     def _check_payment(self):
         for record in self:
             if any([not x.failed for x in record.payment_line_ids]):

@@ -23,4 +23,3 @@
 from . import payment
 from . import account_move_line
 from . import account_invoice
-from . import order_create

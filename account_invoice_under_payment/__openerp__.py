@@ -23,7 +23,7 @@
 {
     "name": "Payment Order Under Payment",
     "summary": "Payment Order Under Payment",
-    "version": "8.0.1.0.0",
+    "version": "8.0.1.0.1",
     "category": "Accounting",
     "description": "Payment Order Under Payment",
     'website': 'http://www.serpentcs.com',
