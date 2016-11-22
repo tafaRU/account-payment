@@ -1,8 +1,9 @@
 .. image:: https://img.shields.io/badge/licence-AGPL--3-blue.svg
     :alt: License: AGPL-3
 
-Account Invoice Under Payment.
-===========================
+=============================
+Account Invoice Under Payment
+=============================
 
 When user confirms a payment order (payment.order), the invoices contained in it should be set as 'under payment'.
 This would make more easy to control the invoices that have already been put in payment.
