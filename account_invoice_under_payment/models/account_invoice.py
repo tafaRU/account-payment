@@ -11,14 +11,14 @@ class AccountInvoice(models.Model):
 
     @api.multi
     @api.depends(
+        'move_id.line_id.under_payment',
         'move_id.line_id.reconcile_id.line_id',
         'move_id.line_id.reconcile_partial_id.line_partial_ids',
     )
     def _check_payment(self):
-        for record in self:
-            for payment_record in record.payment_ids:
-                if payment_record.under_payment:
-                    self.under_payment = True
+        for invoice in self:
+            invoice.under_payment = any(
+                [x.under_payment for x in invoice.move_id.line_id])
 
     under_payment = fields.Boolean(
         'Under Payment', readonly=True, store=True, compute=_check_payment)
