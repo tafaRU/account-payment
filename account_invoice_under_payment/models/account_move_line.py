@@ -12,9 +12,9 @@ class AccountMoveline(models.Model):
     @api.multi
     @api.depends('payment_line_ids.failed', 'payment_line_ids.move_line_id')
     def _check_payment(self):
-        for record in self:
-            if any([x.failed for x in record.payment_line_ids]):
-                record.under_payment = True
+        for line in self:
+            line.under_payment = any(
+                [not x.failed for x in line.payment_line_ids])
 
     payment_line_ids = fields.One2many(
         'payment.line', 'move_line_id', string='Payment Lines', readonly=True)
