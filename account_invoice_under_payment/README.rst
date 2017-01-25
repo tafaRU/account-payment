@@ -5,42 +5,17 @@
 Account Invoice Under Payment
 =============================
 
-When user confirms a payment order (payment.order), the invoices contained in it should be set as 'under payment'.
+When user creates a payment order, the invoices contained in it should be set as 'under payment'.
 This would make more easy to control the invoices that have already been put in payment.
-This is also useful while creating a new payment order, allowing the user to only see the open credits (account.move.line), avoiding to see the "under payments" ones.
-Also, it should be possible to set a payment line as failed (to indicate if something went wrong with the bank or other)
-
-Installation
-============
-
-This module depends on:
-
-* account_payment
-
-Configuration
-=============
-
-There is nothing to configure.
+This is also useful while creating a new payment order, allowing the user to only see the open credits, avoiding to see the 'under payments' ones.
+Also, it should be possible to set a payment line as failed (to indicate if something went wrong with the bank or other) so that the corresponding invoices will show as unpayed yet.
 
 Usage
 =====
 
-To use this module, you need to:
-
-1. Create payment order and payment lines
-
-* The module gives an ability to the end user to choose which invoice is unpaid yet. At the Payment line, once can easily choose to set a flag to indicate whether
-the payment has failed or through.
-* Set the 'failed' flag on payment line, the corresponding Journal Entries and Invoices will show that the invoice is still under payment.
-
 .. image:: https://odoo-community.org/website/image/ir.attachment/5784_f2813bd/datas
    :alt: Try me on Runbot
    :target: https://runbot.odoo-community.org/runbot/96/8.0
-
-Known issues / Roadmap
-======================
-
- * No known issues.
 
 Bug Tracker
 ===========
