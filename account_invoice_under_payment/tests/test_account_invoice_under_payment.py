@@ -86,11 +86,13 @@ class TestAccountInvoiceUnderPayment(TransactionCase):
                 'amount_currency': amount_currency,
                 'communication': communication,
                 'partner_id': partner_id,
-                'failed': True
+                'failed': False
             })
-            workflow.trg_validate(self.uid, 'payment.order', self.payment.id,
-                                  'open', self.cr)
-            self.payment.set_done()
-# Check payment line and move line's payment status
-            self.assertEqual(self.payment.line_ids.failed,
-                             self.move_line_id.under_payment)
+            # Check move line and invoice payment status
+            self.assertEqual(True, self.move_line_id.under_payment)
+            self.assertEqual(True, self.invoice.under_payment)
+
+            self.payment.line_ids.set_failed()
+            self.assertEqual(True, self.payment.line_ids.failed)
+            self.assertEqual(False, self.move_line_id.under_payment)
+            self.assertEqual(False, self.invoice.under_payment)
